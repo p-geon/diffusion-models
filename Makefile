@@ -1,12 +1,14 @@
 export CONTAINER_NAME = diffusion_models
 export DOCKERFILE = Dockerfile
 export DIR_DATA=data
-
+export SCRIPT=swissroll.py
+export BUILD_QUIET=-q
+#export BUILD_QUIET=``
 
 # utils
 .PHONY: build
 build: ## docker build
-	docker build -f $(DOCKERFILE) -t $(CONTAINER_NAME) .
+	docker build $(BUILD_QUIET) -f $(DOCKERFILE) -t $(CONTAINER_NAME) .
 
 
 # -----------
@@ -23,13 +25,13 @@ void: ## run with shell
 
 .PHONY: run
 run: ## run normally (with GPUs)
-	make clean-results
+	-@make clean-results
 	@make build
 	docker run -it --rm --gpus all \
 		-v `pwd`:/work \
 		-v `pwd`/$(DIR_DATA):/data \
 		$(CONTAINER_NAME) \
-		python -O scripts/mnist.py
+		python -O scripts/$(SCRIPT)
 # > results/_stdout.txt
 
 
@@ -40,7 +42,7 @@ debug: ## debug mode (with GPUs)
 		-v `pwd`:/work \
 		-v `pwd`/$(DIR_DATA):/data \
 		$(CONTAINER_NAME) \
-		python scripts/main.py
+		python scripts/$(SCRIPT)
 
 
 .PHONY: jn
