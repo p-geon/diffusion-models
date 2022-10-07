@@ -14,7 +14,7 @@ def get_params():
     return EasyDict({
         "batch_size": 10,
         "epochs": 10000,
-        "lr": 0.001,
+        "lr": 2e-4,
         'n_diffusion_steps': 1000,
     })
 
@@ -46,75 +46,80 @@ class DPM:
         # train
         for epoch in tqdm(range(self.params.epochs)):
             # training
+            np.random.shuffle(x)
             for i in range(n_iters_per_epoch):
-                # random sampling
+                # create batch
                 bs = self.params.batch_size
-                np.random.shuffle(x)
                 x_0 = x[bs*i:bs*(i+1), :]
 
                 # forward process
                 t = np.random.randint(low=0, high=1000)
-                x_0_alpha = self.alpha_t_bar[t] * x_0
-                x_t = x_0_alpha + np.sqrt(1 - self.alpha_t_bar[t]) * np.random.normal(size=x_0.shape)
+                noise_eps = np.random.normal(size=x_0.shape)
+
+                x_0_alpha = np.sqrt(self.alpha_t_bar[t]) * x_0
+                x_t = x_0_alpha + np.sqrt(1 - self.alpha_t_bar[t]) * noise_eps
 
                 t_mat = np.ones(shape=[self.params.batch_size, 1]) * t/self.params.n_diffusion_steps
 
                 # casting for tensorflow
-                x_0_alpha = x_0_alpha.astype(np.float32)
                 x_t = x_t.astype(np.float32)
                 t_mat = t_mat.astype(np.float32)
+                noise_eps = noise_eps.astype(np.float32)
 
-                self.train_step(x_0_alpha, x_t, t_mat)
+                self.train_step(x_t, t_mat, noise_eps)
+
 
             print(f"epoch: {epoch}, loss: {self.train_loss.result():.4f}")
             self.train_loss.reset_states()
 
-            # sampling
-            if(epoch%100==0):
-                n_samples = 1000
-                x_T = np.random.normal(size=[n_samples, 2])
-                x_t = x_T.astype(np.float32)
-                for t in reversed(range(self.params.n_diffusion_steps)):
-                    z = np.random.normal(size=[n_samples, 2]) if(t > 0) else np.zeros(shape=[n_samples, 2])
-
-                    t_mat = np.ones(shape=[n_samples, 1]) * t/self.params.n_diffusion_steps
-                    t_mat = t_mat.astype(np.float32)
-
-                    pred = self.model([x_t, t_mat])
-
-                    frac_a = 1 - self.alpha_t[t]
-                    frac_b = np.sqrt(1 - self.alpha_t_bar[t])
-                    denoise_x = frac_a/frac_b * pred # ここの係数がおかしい
-
-                    sigma_t = 1
-                    x_t = 1/np.sqrt(1 - self.alpha_t[t]) * (x_T - denoise_x) + sigma_t * z
-
-
-                    if(t%100==0):
-                        visualize(x_t, None, savename=f"epoch_{epoch}-{t}")
-                        if(False):
-                            print("z", z) # [10, 2]
-                            print("t_mat", t_mat) # [10, 1], t依存.
-                            print("pred", pred) # [10, 2], float32
-                            print('denoise_x', denoise_x) # [10, 2], inf or -inf
-                            print('x_t', x_t) # [10, 2], inf or -inf
+            if(epoch%1000==0):
+                self.sampling(epoch)
 
 
     @tf.function
-    def train_step(self, x_0_alpha, x_t, t):
+    def train_step(self, x_t, t, noise_eps):
         # reverse process
         with tf.GradientTape() as tape:
-            #noise_epsilon = tf.random.normal(shape=[self.params.batch_size, 2])
-            noise_epsilon = x_t - x_0_alpha
-            pred = self.model([x_t, t])
-            pred_noise = x_t - pred
-            loss = self.loss_object(noise_epsilon, pred_noise)
+            pred_noise = self.model([x_t, t])
+            #pred_noise = x_t - pred
+            loss = self.loss_object(noise_eps, pred_noise)
 
         grad = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grad, self.model.trainable_variables))
 
         self.train_loss(loss)
         
+
+    def sampling(self, epoch: int, n_samples: int=1000) -> None:
+        x_T = np.random.normal(size=[n_samples, 2])
+        x_t = x_T.astype(np.float32)
+        for t in reversed(range(self.params.n_diffusion_steps)): # t=999, 998, ..., 0
+            z = np.random.normal(size=[n_samples, 2]) if(t > 0) else np.zeros(shape=[n_samples, 2])
+
+            t_mat = np.ones(shape=[n_samples, 1]) * t/self.params.n_diffusion_steps
+            t_mat = t_mat.astype(np.float32)
+
+            pred = self.model([x_t, t_mat])
+
+            # algo2 4:
+            frac_a = 1 - self.alpha_t[t]
+            frac_b = np.sqrt(1 - self.alpha_t_bar[t])
+            pred_noise_eps = frac_a/frac_b * pred
+            
+            scale = 1/np.sqrt(self.alpha_t[t])
+            sigma_t = np.sqrt(self.betas[t])
+            x_t = scale * (x_T - pred_noise_eps) + sigma_t * z
+
+
+            if(t%100==0 or t==999):
+                visualize(x_t, None, savename=f"epoch_{epoch}-{t}")
+                if(False):
+                    print("z", z) # [10, 2]
+                    print("t_mat", t_mat) # [10, 1], t依存.
+                    print("pred", pred) # [10, 2], float32
+                    print('denoise_x', denoise_x) # [10, 2], inf or -inf
+                    print('x_t', x_t) # [10, 2], inf or -inf
+
 
 if(__name__ == '__main__'):
     DPM().__call__()

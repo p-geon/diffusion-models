@@ -2,7 +2,6 @@ import tensorflow as tf
 
 
 def create_dpm():
-    # 2 layers multi-layer perceptron
     x = x_in = tf.keras.layers.Input(shape=[2])
     t = t_in = tf.keras.layers.Input(shape=[1])
 

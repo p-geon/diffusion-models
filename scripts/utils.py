@@ -24,9 +24,6 @@ def create_alpha(n_steps: int, betas: np.ndarray):
         alpha_t_bar[i] = np.prod(alpha_s[:i+1])
     alpha_t_bar = alpha_t_bar[:, np.newaxis] # add pixel-axis
 
-    print("alpha_s[0]:", alpha_s[0:5])
-    print("alpha_t_bar[0]", alpha_t_bar[0:5])
-
     if(False): # show graph
         plt.figure()
         plt.plot(alpha_s)
