@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from easydict import EasyDict
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 from model import create_dpm
 from utils import create_beta, create_alpha, visualize
@@ -13,7 +14,7 @@ from swissroll import load_swissroll
 def get_params():
     return EasyDict({
         "batch_size": 10,
-        "epochs": 10000,
+        "epochs": 501,
         "lr": 2e-4,
         'n_diffusion_steps': 1000,
     })
@@ -25,6 +26,11 @@ class DPM:
         self.betas = create_beta(n_steps=self.params.n_diffusion_steps)
         self.alpha_t, self.alpha_t_bar = create_alpha(n_steps=self.params.n_diffusion_steps, betas=self.betas)
         self.define_model()
+        self.losses = []
+        self.animations = {
+            'epoch': [],
+            'step': [],
+        }
 
     
     def define_model(self):
@@ -53,27 +59,42 @@ class DPM:
                 x_0 = x[bs*i:bs*(i+1), :]
 
                 # forward process
-                t = np.random.randint(low=0, high=1000)
-                noise_eps = np.random.normal(size=x_0.shape)
-
-                x_0_alpha = np.sqrt(self.alpha_t_bar[t]) * x_0
-                x_t = x_0_alpha + np.sqrt(1 - self.alpha_t_bar[t]) * noise_eps
-
-                t_mat = np.ones(shape=[self.params.batch_size, 1]) * t/self.params.n_diffusion_steps
-
-                # casting for tensorflow
-                x_t = x_t.astype(np.float32)
-                t_mat = t_mat.astype(np.float32)
-                noise_eps = noise_eps.astype(np.float32)
+                x_t, t_mat, noise_eps = self.forward_process(x_0)
 
                 self.train_step(x_t, t_mat, noise_eps)
 
 
-            print(f"epoch: {epoch}, loss: {self.train_loss.result():.4f}")
+            self.losses.append(self.train_loss.result())
             self.train_loss.reset_states()
 
-            if(epoch%1000==0):
+            if(epoch%500==0):
+                print(f"epoch: {epoch}, loss: {self.train_loss.result():.4f}")
                 self.sampling(epoch)
+                plt.figure()
+                plt.plot(self.losses)
+                plt.savefig("results/loss.png")
+
+        ani = animation.ArtistAnimation(plt.figure(), self.animations['epoch'], interval=100)
+        ani.save("results/epoch.gif")
+        ani = animation.ArtistAnimation(plt.figure(), self.animations['step'], interval=100)
+        ani.save("results/step.gif")
+
+
+
+    def forward_process(self, x_0: np.ndarray) -> tuple:
+        t = np.random.randint(low=1, high=1000)
+        noise_eps = np.random.normal(size=x_0.shape)
+
+        x_0_alpha = np.sqrt(self.alpha_t_bar[t]) * x_0
+        x_t = x_0_alpha + np.sqrt(1 - self.alpha_t_bar[t]) * noise_eps
+
+        t_mat = np.ones(shape=[self.params.batch_size, 1]) * t/self.params.n_diffusion_steps
+
+        # casting for tensorflow
+        x_t = x_t.astype(np.float32)
+        t_mat = t_mat.astype(np.float32)
+        noise_eps = noise_eps.astype(np.float32)
+        return x_t, t_mat, noise_eps
 
 
     @tf.function
@@ -81,7 +102,6 @@ class DPM:
         # reverse process
         with tf.GradientTape() as tape:
             pred_noise = self.model([x_t, t])
-            #pred_noise = x_t - pred
             loss = self.loss_object(noise_eps, pred_noise)
 
         grad = tape.gradient(loss, self.model.trainable_variables)
@@ -108,11 +128,17 @@ class DPM:
             
             scale = 1/np.sqrt(self.alpha_t[t])
             sigma_t = np.sqrt(self.betas[t])
-            x_t = scale * (x_T - pred_noise_eps) + sigma_t * z
+            x_t = scale * (x_t - pred_noise_eps) + sigma_t * z
 
 
             if(t%100==0 or t==999):
-                visualize(x_t, None, savename=f"epoch_{epoch}-{t}")
+                figure = visualize(x_t, None, savename=f"epoch_{epoch}-{t}")
+                if(t==0):
+                    self.animations['epoch'].append(figure)
+                if(epoch==500):
+                    self.animations['step'].append(figure)
+
+
                 if(False):
                     print("z", z) # [10, 2]
                     print("t_mat", t_mat) # [10, 1], t依存.

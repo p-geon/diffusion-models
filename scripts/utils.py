@@ -3,9 +3,12 @@ import matplotlib.pyplot as plt
 
 
 def visualize(x, c, savename):
-    plt.figure()
-    plt.scatter(x[:, 0], x[:, 1], c=c)
+    plt.figure(figsize=(10, 10))
+    plt.xlim(-2.0, 2.0)
+    plt.ylim(-2.0, 2.0)
+    figure = plt.scatter(x[:, 0], x[:, 1], c=c)
     plt.savefig(f'results/{savename}.png')
+    return figure
 
 
 def create_beta(n_steps: int):
