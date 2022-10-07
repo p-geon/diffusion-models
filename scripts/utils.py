@@ -21,13 +21,16 @@ def create_alpha(n_steps: int, betas: np.ndarray):
 
     alpha_t_bar = np.zeros(shape=[n_steps])
     for i in range(n_steps):
-        alpha_t_bar[i] = np.prod(alpha_s[:i])
+        alpha_t_bar[i] = np.prod(alpha_s[:i+1])
     alpha_t_bar = alpha_t_bar[:, np.newaxis] # add pixel-axis
+
+    print("alpha_s[0]:", alpha_s[0:5])
+    print("alpha_t_bar[0]", alpha_t_bar[0:5])
 
     if(False): # show graph
         plt.figure()
         plt.plot(alpha_s)
         plt.plot(alpha_t_bar)
         plt.savefig('results/alpha_t_bar.png')
-    return alpha_t_bar
+    return alpha_s, alpha_t_bar
 
