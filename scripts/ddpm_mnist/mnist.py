@@ -1,6 +1,5 @@
+import tensorflow as tf
 import numpy as np
-from sklearn.datasets import make_swiss_roll
-from utils import visualize
 
 
 def normalize(x: np.ndarray) -> np.ndarray:
@@ -10,14 +9,13 @@ def normalize(x: np.ndarray) -> np.ndarray:
     return x
 
 
-def load_swissroll():
+def load_data():
     """
     x: [n_samples, 2]
     """
-    x, color = make_swiss_roll(n_samples=1000, noise=0.0, random_state=None)
-    x = np.delete(x, obj=1, axis=-1) # delete Y axis
+    mnist = tf.keras.datasets.mnist
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
     # normalize x and y
     x = normalize(x)
-    visualize(x, color, savename="t=0")
     return x

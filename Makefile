@@ -1,7 +1,7 @@
 export CONTAINER_NAME = diffusion_models
 export DOCKERFILE = Dockerfile
 export DIR_DATA=data
-export SCRIPT=main.py
+export SCRIPT=ddpm_swissroll/main.py
 export BUILD_QUIET=-q
 #export BUILD_QUIET=``
 
@@ -62,6 +62,7 @@ jn: ## run with jupyter
 .PHONY: clean-results
 clean-results:
 	rm -f results/*.png
+	rm -f results/*.gif
 	
 
 .PHONY:	help

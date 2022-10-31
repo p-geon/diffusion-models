@@ -8,6 +8,7 @@ def visualize(x, c, savename):
     plt.ylim(-2.0, 2.0)
     plt.scatter(x[:, 0], x[:, 1], c=c)
     plt.savefig(f'results/{savename}.png')
+    plt.close()
 
 
 def create_beta(n_steps: int):
@@ -31,5 +32,6 @@ def create_alpha(n_steps: int, betas: np.ndarray):
         plt.plot(alpha_s)
         plt.plot(alpha_t_bar)
         plt.savefig('results/alpha_t_bar.png')
+        plt.close()
     return alpha_s, alpha_t_bar
 

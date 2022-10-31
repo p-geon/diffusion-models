@@ -9,16 +9,17 @@ import matplotlib.animation as animation
 
 from model import create_dpm
 from utils import create_beta, create_alpha, visualize
-from swissroll import load_swissroll
+from swissroll import load_data
 
 
 def get_params():
     return EasyDict({
         "batch_size": 10,
-        "epochs": 5001,
+        "epochs": 2001,
+        'n_samples': 1000,
         "lr": 2e-4,
         'n_diffusion_steps': 1000,
-        'sampling_per_epochs': 20,
+        'sampling_per_epochs': 60,
     })
 
 
@@ -30,6 +31,10 @@ class DPM:
         self.define_model()
         self.losses = []
         self.generated_t0 = []
+        self.animations = {
+            'epoch': [],
+            'step': [],
+        }
 
     
     def define_model(self):
@@ -43,7 +48,7 @@ class DPM:
     
 
     def __call__(self):
-        x = load_swissroll()
+        x = load_data(n_samples=self.params.n_samples)
         n_iters_per_epoch = x.shape[0] // self.params.batch_size
 
         for epoch in tqdm(range(self.params.epochs)):
@@ -55,8 +60,18 @@ class DPM:
                 x_t, t_mat, noise_eps = self.forward_process(x_0)
                 self.train_step(x_t, t_mat, noise_eps)
 
+            if(epoch%500==0):
+                print(f"epoch: {epoch}, loss: {self.train_loss.result():.4f}")
+                self.sampling(epoch)
+                plt.figure()
+                plt.plot(self.losses)
+                plt.savefig("results/loss.png")
+    
             self.losses.append(self.train_loss.result())
             self.train_loss.reset_states()
+
+
+        self.create_scattering_animation()
 
 
     def forward_process(self, x_0: np.ndarray) -> Tuple[np.ndarray]:
@@ -103,7 +118,6 @@ class DPM:
             scale = 1/np.sqrt(self.alpha_t[t])
             sigma_t = np.sqrt(self.betas[t])
             x_t = scale * (x_t - pred_noise_eps) + sigma_t * z
-
 
             if(t%100==0 or t==999):
                 visualize(x_t, None, savename=f"epoch_{epoch}-{t}")
