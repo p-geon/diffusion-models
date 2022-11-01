@@ -11,6 +11,17 @@ def visualize(x, c, savename):
     plt.close()
 
 
+def show_images(x_t, epoch, savename):
+    n_rows = np.sqrt(x_t.shape[0]).astype(int)
+    # plot images rows x rows
+    fig, axes = plt.subplots(nrows=n_rows, ncols=n_rows, figsize=(10, 10))
+    for i, ax in enumerate(axes.flat):
+        ax.imshow(x_t[i], cmap='gray')
+        ax.axis('off')
+    plt.savefig(f'results/{savename}.png')
+    plt.close()
+
+
 def create_beta(n_steps: int):
     beta_1 = 10e-4
     beta_T = 0.02
@@ -26,12 +37,5 @@ def create_alpha(n_steps: int, betas: np.ndarray):
     for i in range(n_steps):
         alpha_t_bar[i] = np.prod(alpha_s[:i+1])
     alpha_t_bar = alpha_t_bar[:, np.newaxis] # add pixel-axis
-
-    if(False): # show graph
-        plt.figure()
-        plt.plot(alpha_s)
-        plt.plot(alpha_t_bar)
-        plt.savefig('results/alpha_t_bar.png')
-        plt.close()
     return alpha_s, alpha_t_bar
 

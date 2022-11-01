@@ -8,17 +8,17 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 from model import create_dpm
-from utils import create_beta, create_alpha, visualize
-from swissroll import load_swissroll
+from utils import create_beta, create_alpha, visualize, show_images
+from data import load_data
 
 
 def get_params():
     return EasyDict({
-        "batch_size": 10,
-        "epochs": 5001,
+        "batch_size": 500,
+        "epochs": 20001,
         "lr": 2e-4,
         'n_diffusion_steps': 1000,
-        'sampling_per_epochs': 20,
+        'sampling_per_epochs': 100,
     })
 
 
@@ -43,7 +43,7 @@ class DPM:
     
 
     def __call__(self):
-        x = load_swissroll()
+        x = load_data()
         n_iters_per_epoch = x.shape[0] // self.params.batch_size
 
         for epoch in tqdm(range(self.params.epochs)):
@@ -55,7 +55,7 @@ class DPM:
                 x_t, t_mat, noise_eps = self.forward_process(x_0)
                 self.train_step(x_t, t_mat, noise_eps)
 
-            if(epoch%500==0):
+            if(epoch%self.params.sampling_per_epochs==0):
                 print(f"epoch: {epoch}, loss: {self.train_loss.result():.4f}")
                 self.sampling(epoch)
                 plt.figure()
@@ -66,10 +66,7 @@ class DPM:
             self.train_loss.reset_states()
 
 
-        ani = animation.ArtistAnimation(plt.figure(), self.animations['epoch'], interval=100)
-        ani.save("results/epoch.gif")
-        ani = animation.ArtistAnimation(plt.figure(), self.animations['step'], interval=100)
-        ani.save("results/step.gif")
+        self.create_scattering_animation()
 
 
     def forward_process(self, x_0: np.ndarray) -> Tuple[np.ndarray]:
@@ -96,12 +93,12 @@ class DPM:
         self.train_loss(loss)
         
 
-    def sampling(self, epoch: int, n_samples: int=1000) -> None:
-        x_T = np.random.normal(size=[n_samples, 2])
+    def sampling(self, epoch: int, n_samples: int=64, n_dim: int=784) -> None:
+        x_T = np.random.normal(size=[n_samples, n_dim])
         x_t = x_T.astype(np.float32)
         for t in reversed(range(self.params.n_diffusion_steps)): # t=999, 998, ..., 0
             # reverse process
-            z = np.random.normal(size=[n_samples, 2]) if(t > 0) else np.zeros(shape=[n_samples, 2])
+            z = np.random.normal(size=[n_samples, n_dim]) if(t > 0) else np.zeros(shape=[n_samples, n_dim])
 
             t_mat = np.ones(shape=[n_samples, 1]) * t/self.params.n_diffusion_steps
             t_mat = t_mat.astype(np.float32)
@@ -117,10 +114,9 @@ class DPM:
             sigma_t = np.sqrt(self.betas[t])
             x_t = scale * (x_t - pred_noise_eps) + sigma_t * z
 
-            if(t%25==0 or t==999):
-                visualize(x_t, None, savename=f"epoch_{epoch}-{t}")
-                if(t==0):
-                    self.generated_t0.append(x_t)
+            if(t%100==0 or t==999):
+                print("x_t", x_t.shape)
+                show_images(x_t.numpy().reshape(-1, 28, 28), epoch, savename=f"sampling_{epoch}_{t}")
 
 
     def create_scattering_animation(self):

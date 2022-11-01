@@ -3,8 +3,7 @@ import numpy as np
 
 
 def normalize(x: np.ndarray) -> np.ndarray:
-    x[:, 0] = (x[:, 0] - np.min(x[:, 0])) / (np.max(x[:, 0]) - np.min(x[:, 0]))
-    x[:, 1] = (x[:, 1] - np.min(x[:, 1])) / (np.max(x[:, 1]) - np.min(x[:, 1]))
+    x = x / x.max()
     x = (2 * x) - 1.0
     return x
 
@@ -17,5 +16,11 @@ def load_data():
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
     # normalize x and y
+    x = x_train.reshape(-1, 784)
     x = normalize(x)
+
+    # asserts
+    assert x.shape == (60000, 784), x.shape
+    assert x.min() < -1.0, x.min()
+    assert x.max() > 1.0, x.max()
     return x

@@ -9,7 +9,7 @@ import matplotlib.animation as animation
 
 from model import create_dpm
 from utils import create_beta, create_alpha, visualize
-from swissroll import load_data
+from data import load_data
 
 
 def get_params():
@@ -31,12 +31,8 @@ class DPM:
         self.define_model()
         self.losses = []
         self.generated_t0 = []
-        self.animations = {
-            'epoch': [],
-            'step': [],
-        }
 
-    
+
     def define_model(self):
         # define model
         self.model = create_dpm()
