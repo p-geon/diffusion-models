@@ -3,7 +3,7 @@ import tensorflow as tf
 
 def scaler_to_2d(x: tf.Tensor) -> tf.Tensor:
     x = tf.expand_dims(tf.expand_dims(x, axis=-1), axis=-1)
-    x = tf.tile(x, multiples=[1, 1, 28, 28])
+    x = tf.tile(x, multiples=[1, 28, 28, 1])
     return x
 
 
@@ -35,6 +35,6 @@ def create_dpm():
     x = block(x, ch=32)
     x = block(x, ch=32)
     x = tf.keras.layers.Conv2D(1, 3, padding='same')(x) # [batch, 28, 28, 1]
-    x = tf.keras.layers.Activation('tanh')(x)
+    # noise の予測なので tanh はいらない
     y = x
     return tf.keras.Model(inputs=[x_in, t_in], outputs=y)

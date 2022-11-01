@@ -1,6 +1,7 @@
 from typing import Tuple, List
 from dl_initializer import tf_initializer; tf_initializer(seed=42, print_debug=False) # call this before importing tensorflow
 import tensorflow as tf
+import tensorflow_addons as tfa
 import numpy as np
 from tqdm import tqdm
 from easydict import EasyDict
@@ -16,9 +17,10 @@ def get_params():
     return EasyDict({
         "batch_size": 500,
         "epochs": 20001,
-        "lr": 2e-4,
+        "lr": 1e-3,
+        'weight_decay': 1e-4,
         'n_diffusion_steps': 1000,
-        'sampling_per_epochs': 100,
+        'sampling_per_epochs': 50,
     })
 
 
@@ -39,7 +41,10 @@ class DPM:
         tf.keras.utils.plot_model(self.model, to_file='results/model.png', show_shapes=True)
         self.train_loss = tf.keras.metrics.Mean(name='train_loss')
         self.loss_object = tf.keras.losses.MeanSquaredError()
-        self.optimizer = tf.keras.optimizers.Adam(self.params.lr)
+        self.optimizer = tfa.optimizers.AdamW(
+            learning_rate=self.params.lr, 
+            weight_decay=self.params.weight_decay
+        )
     
 
     def __call__(self):
@@ -59,6 +64,10 @@ class DPM:
                 print(f"epoch: {epoch}, loss: {self.train_loss.result():.4f}")
                 self.sampling(epoch)
                 plt.figure()
+                plt.ylim(0, 0.3)
+                #plt.yscale('log')
+                plt.grid(which='major',color='black',linestyle='-')
+                plt.grid(which='minor',color='black',linestyle='-')
                 plt.plot(self.losses)
                 plt.savefig("results/loss.png")
     
@@ -114,9 +123,12 @@ class DPM:
             sigma_t = np.sqrt(self.betas[t])
             x_t = scale * (x_t - pred_noise_eps) + sigma_t * z
 
-            if(t%100==0 or t==999):
+            if(t==0):#t%100==0 or t==999):
                 print("x_t", x_t.shape)
-                show_images(x_t.numpy().reshape(-1, 28, 28), epoch, savename=f"sampling_{epoch}_{t}")
+                imgs = x_t.numpy().reshape(-1, 28, 28)
+                imgs = (imgs + 1.0) / 2.0
+                imgs = np.clip(imgs, 0, 1)
+                show_images(imgs, savename=f"sampling_{epoch}_{t}")
 
 
     def create_scattering_animation(self):

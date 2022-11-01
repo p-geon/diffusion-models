@@ -1,6 +1,7 @@
 from typing import Tuple, List
 from dl_initializer import tf_initializer; tf_initializer(seed=42, print_debug=False) # call this before importing tensorflow
 import tensorflow as tf
+import tensorflow_addons as tfa
 import numpy as np
 from tqdm import tqdm
 from easydict import EasyDict
@@ -14,11 +15,12 @@ from data import load_data
 
 def get_params():
     return EasyDict({
-        "batch_size": 500,
+        "batch_size": 50,
         "epochs": 20001,
-        "lr": 2e-4,
+        "lr": 1e-3,
+        'weight_decay': 1e-4,
         'n_diffusion_steps': 1000,
-        'sampling_per_epochs': 100,
+        'sampling_per_epochs': 50,
     })
 
 
@@ -39,7 +41,11 @@ class DPM:
         tf.keras.utils.plot_model(self.model, to_file='results/model.png', show_shapes=True)
         self.train_loss = tf.keras.metrics.Mean(name='train_loss')
         self.loss_object = tf.keras.losses.MeanSquaredError()
-        self.optimizer = tf.keras.optimizers.Adam(self.params.lr)
+        #self.optimizer = tf.keras.optimizers.Adam(self.params.lr)
+        self.optimizer = tfa.optimizers.AdamW(
+            learning_rate=self.params.lr, 
+            weight_decay=self.params.weight_decay
+        )
     
 
     def __call__(self):
@@ -49,7 +55,7 @@ class DPM:
         for epoch in tqdm(range(self.params.epochs)):
             np.random.shuffle(x)
             for i in range(n_iters_per_epoch):
-                x_0 = x[self.params.batch_size*i:self.params.batch_size*(i+1), :] # create batch
+                x_0 = x[self.params.batch_size*i:self.params.batch_size*(i+1)] # create batch
 
                 # training
                 x_t, t_mat, noise_eps = self.forward_process(x_0)
@@ -93,12 +99,12 @@ class DPM:
         self.train_loss(loss)
         
 
-    def sampling(self, epoch: int, n_samples: int=64, n_dim: int=784) -> None:
-        x_T = np.random.normal(size=[n_samples, n_dim])
+    def sampling(self, epoch: int, n_samples: int=64, shape: list=[28, 28, 1]) -> None:
+        x_T = np.random.normal(size=[n_samples, *shape])
         x_t = x_T.astype(np.float32)
         for t in reversed(range(self.params.n_diffusion_steps)): # t=999, 998, ..., 0
             # reverse process
-            z = np.random.normal(size=[n_samples, n_dim]) if(t > 0) else np.zeros(shape=[n_samples, n_dim])
+            z = np.random.normal(size=[n_samples, *shape]) if(t > 0) else np.zeros(shape=[n_samples, *shape])
 
             t_mat = np.ones(shape=[n_samples, 1]) * t/self.params.n_diffusion_steps
             t_mat = t_mat.astype(np.float32)

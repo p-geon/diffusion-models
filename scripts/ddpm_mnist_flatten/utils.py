@@ -11,12 +11,12 @@ def visualize(x, c, savename):
     plt.close()
 
 
-def show_images(x_t, epoch, savename):
+def show_images(x_t, savename):
     n_rows = np.sqrt(x_t.shape[0]).astype(int)
     # plot images rows x rows
     fig, axes = plt.subplots(nrows=n_rows, ncols=n_rows, figsize=(10, 10))
     for i, ax in enumerate(axes.flat):
-        ax.imshow(x_t[i], cmap='gray')
+        ax.imshow(x_t[i], cmap='gray', vmax=1.0, vmin=0.0)
         ax.axis('off')
     plt.savefig(f'results/{savename}.png')
     plt.close()
