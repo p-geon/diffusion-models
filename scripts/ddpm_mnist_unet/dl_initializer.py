@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 
-def tf_initializer(seed: int=42, print_debug=True) -> None:
+def tf_initializer(seed: int=42, print_debug=True, mixed_precision: bool=False) -> None:
     """ Silence every warning of notice from tensorflow.
     checked TF versions
     - 2.7.0-gpu
@@ -34,3 +34,7 @@ def tf_initializer(seed: int=42, print_debug=True) -> None:
     np.random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     if(print_debug): print(f'[{__name__}] set random seed: {seed}')
+
+    if(mixed_precision):
+        tf.keras.mixed_precision.set_global_policy('mixed_float16')
+        print(f'[{__name__}] mixed precision: {tf.keras.mixed_precision.global_policy()}')

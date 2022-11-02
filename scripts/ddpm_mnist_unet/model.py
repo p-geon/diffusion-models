@@ -28,10 +28,7 @@ def scaler_to_2d(x: tf.Tensor, size: int) -> tf.Tensor:
 
 
 def block(x: tf.Tensor, ch: int) -> tf.Tensor:
-    bn_args = {
-        'center': False,
-        'scale': False,
-    }
+    bn_args = {'center': True, 'scale': True,} #bn_args = {'center': False, 'scale': False,}
 
     x = tf.keras.layers.Conv2D(ch, kernel_size=(3, 3), padding='same')(x)
     x = tf.keras.layers.BatchNormalization(**bn_args)(x)
@@ -51,13 +48,13 @@ def create_dpm():
     x_1 = x # [batch, 28, 28, 32]
 
     x = tf.keras.layers.Concatenate()([x, scaler_to_2d(t, 28)])
-    #x = tf.keras.layers.MaxPool2D(2)(x)
+    #x = tf.keras.layers.MaxPool2D(pool_size=(2, 2))(x)
     x = tf.keras.layers.AveragePooling2D(pool_size=(2, 2))(x)
     x = block(x, ch=64)
     x_2 = x # [batch, 14, 14, 64]
 
     x = tf.keras.layers.Concatenate()([x, scaler_to_2d(t, 14)])
-    #x = tf.keras.layers.MaxPool2D(2)(x) # [batch, 7, 7, 64]
+    #x = tf.keras.layers.MaxPool2D(pool_size=(2, 2))(x) # [batch, 7, 7, 64]
     x = tf.keras.layers.AveragePooling2D(pool_size=(2, 2))(x) # [batch, 7, 7, 64]
     x = block(x, ch=128)
 

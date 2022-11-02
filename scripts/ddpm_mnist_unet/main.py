@@ -1,5 +1,5 @@
 from typing import Tuple, List
-from dl_initializer import tf_initializer; tf_initializer(seed=42, print_debug=False) # call this before importing tensorflow
+from dl_initializer import tf_initializer; tf_initializer(seed=42, print_debug=True, mixed_precision=False) # call this before importing tensorflow
 import tensorflow as tf
 import tensorflow_addons as tfa
 import numpy as np
@@ -61,7 +61,7 @@ class DPM:
                 x_t, t_mat, noise_eps = self.forward_process(x_0)
                 self.train_step(x_t, t_mat, noise_eps)
 
-            if(epoch%self.params.sampling_per_epochs==0):
+            if(epoch%self.params.sampling_per_epochs==0 or epoch==self.params.sampling_per_epochs//10):
                 print(f"epoch: {epoch}, loss: {self.train_loss.result():.4f}")
                 self.sampling(epoch)
                 plt.figure()
@@ -69,7 +69,7 @@ class DPM:
                 plt.grid(which='major',color='black',linestyle='-')
                 plt.grid(which='minor',color='black',linestyle='-')
                 plt.plot(self.losses)
-                plt.savefig("results/log-loss.png")
+                plt.savefig("results/loss.png")
     
             self.losses.append(self.train_loss.result())
             self.train_loss.reset_states()
@@ -124,8 +124,9 @@ class DPM:
             x_t = scale * (x_t - pred_noise_eps) + sigma_t * z
 
             if(t%100==0 or t==999):
-                print("x_t", x_t.shape)
-                show_images(x_t.numpy().reshape(-1, 28, 28), epoch, savename=f"sampling_{epoch}_{t}")
+                print("x_t", x_t.shape, type(x_t.numpy()[0, 0, 0, 0]))
+                imgs = x_t.numpy().reshape(-1, 28, 28).astype(np.float32)
+                show_images(imgs, epoch, savename=f"sampling_{epoch}_{t}")
 
 
     def create_scattering_animation(self):
