@@ -1,7 +1,7 @@
 export CONTAINER_NAME = diffusion_models
 export DOCKERFILE = Dockerfile
 export DIR_DATA=data
-export SCRIPT=ddpm_mnist_flatten/main.py
+export SCRIPT=ddpm_mnist_unet/main.py
 export BUILD_QUIET=-q
 #export BUILD_QUIET=``
 

@@ -65,8 +65,11 @@ class DPM:
                 print(f"epoch: {epoch}, loss: {self.train_loss.result():.4f}")
                 self.sampling(epoch)
                 plt.figure()
+                plt.ylim(0, 1.0)
+                plt.grid(which='major',color='black',linestyle='-')
+                plt.grid(which='minor',color='black',linestyle='-')
                 plt.plot(self.losses)
-                plt.savefig("results/loss.png")
+                plt.savefig("results/log-loss.png")
     
             self.losses.append(self.train_loss.result())
             self.train_loss.reset_states()
